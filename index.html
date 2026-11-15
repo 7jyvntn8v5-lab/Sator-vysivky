@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#092848">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SATOR Výšivky">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<title>SATOR Kalkulačka výšivky</title>
+<style>
+/* Layout: ľavý stĺpec = zadanie z Wilcomu, pravý (sticky) = cena, rebríček, trh, interná marža */
+:root{
+  --bg:#eef3f8; --panel:#ffffff; --ink:#1b2428; --muted:#5c6b70; --line:#d3dde8;
+  --accent:#1769b0; --accent-ink:#ffffff; --thread:#e07a0c; --good:#1c7c4a; --warn:#b7791f; --bad:#b83232;
+  --soft:#e1eaf3;
+  --display:-apple-system,'SF Pro Display','Segoe UI',system-ui,sans-serif;
+  --body:-apple-system,'SF Pro Text','Segoe UI',system-ui,sans-serif;
+  --mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0b1a2b; --panel:#12263d; --ink:#e8eef5; --muted:#9db1c7; --line:#23405f;
+    --accent:#5db4f2; --accent-ink:#06182c; --thread:#f59a2b; --good:#4cc588; --warn:#e0a63f; --bad:#ee6b6b; --soft:#1a3350;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0b1a2b; --panel:#12263d; --ink:#e8eef5; --muted:#9db1c7; --line:#23405f;
+  --accent:#5db4f2; --accent-ink:#06182c; --thread:#f59a2b; --good:#4cc588; --warn:#e0a63f; --bad:#ee6b6b; --soft:#1a3350;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none;background:var(--bg);color:var(--ink);font:15px/1.5 var(--body);-webkit-text-size-adjust:100%}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+a{color:var(--accent)}
+.wrap{max-width:1180px;margin:0 auto;padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+.brand{display:flex;align-items:center;gap:12px}
+.brand img{width:48px;height:48px;border-radius:11px;display:block}
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;padding:8px 0 14px}
+header.top h1{font-size:28px;line-height:1.1}
+header.top .sub{color:var(--muted);font-size:13px;margin-top:4px}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:16px;overflow-x:auto}
+.tabs button{font:600 14px var(--body);background:none;border:0;color:var(--muted);padding:10px 14px;border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--thread)}
+button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.grid{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+@media (min-width:980px){ .grid{grid-template-columns:minmax(0,5fr) minmax(0,6fr);align-items:start} .sticky{position:sticky;top:12px} }
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
+.card + .card{margin-top:16px}
+.card h2{font-size:17px;margin-bottom:12px}
+.card h3{font-size:14px;margin:14px 0 8px;color:var(--muted);font-weight:600;text-transform:none}
+.f{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.f .full{grid-column:1/-1}
+label{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:4px}
+input[type=number],input[type=text],select{width:100%;font:500 16px var(--mono);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:9px 10px;min-height:42px}
+select{font-family:var(--body);font-size:16px}
+.chk{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:500;color:var(--ink);margin:0;min-height:36px}
+.chk input{width:18px;height:18px;accent-color:var(--accent)}
+.hint{font-size:12px;color:var(--muted);margin-top:4px}
+.btn{font:600 14px var(--body);border:1px solid var(--line);background:var(--soft);color:var(--ink);border-radius:6px;padding:9px 14px;cursor:pointer;min-height:40px}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.hero{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.big{background:var(--soft);border-radius:8px;padding:12px 14px}
+.big .k{font-size:12px;color:var(--muted);font-weight:600}
+.big .v{font:600 26px/1.15 var(--mono);font-variant-numeric:tabular-nums;margin-top:2px}
+.big.main{background:var(--accent);color:var(--accent-ink)}
+.big.main .k{color:inherit;opacity:.8}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{padding:7px 8px;text-align:right;border-bottom:1px solid var(--line);font-size:13.5px}
+th:first-child,td:first-child{text-align:left}
+th{font-size:12px;color:var(--muted);font-weight:600}
+td.m,th.m{font-family:var(--mono)}
+tr.cur td{background:var(--soft);font-weight:600}
+.scroll{overflow-x:auto}
+.lines td{border-bottom:1px dashed var(--line)}
+.lines tr.tot td{border-top:2px solid var(--ink);border-bottom:0;font-weight:700;font-size:15px}
+.flags{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+.flag{font-size:13px;padding:8px 10px;border-radius:6px;border-left:4px solid var(--warn);background:var(--soft)}
+.flag.bad{border-left-color:var(--bad)} .flag.good{border-left-color:var(--good)} .flag.info{border-left-color:var(--accent)}
+.bars{display:flex;flex-direction:column;gap:8px}
+.bar{display:grid;grid-template-columns:minmax(90px,150px) 1fr 74px;gap:8px;align-items:center;font-size:13px}
+.bar .t{height:14px;background:var(--soft);border-radius:3px;position:relative}
+.bar .t i{display:block;height:100%;border-radius:3px;background:var(--muted);opacity:.55}
+.bar.us .t i{background:var(--thread);opacity:1}
+.bar .n{text-align:right;font-family:var(--mono)}
+.bar.na{color:var(--muted)}
+.pill{display:inline-block;font-size:12px;font-weight:600;padding:2px 9px;border-radius:99px;background:var(--soft)}
+.pill.good{color:var(--good)} .pill.warn{color:var(--warn)} .pill.bad{color:var(--bad)}
+details{border:1px solid var(--line);border-radius:8px;padding:0 12px;margin-top:12px}
+details>summary{cursor:pointer;font-weight:600;padding:11px 0;font-size:14px}
+details[open]>summary{border-bottom:1px solid var(--line);margin-bottom:10px}
+details>*:last-child{margin-bottom:12px}
+pre.quote{white-space:pre-wrap;font:13px/1.55 var(--mono);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:12px;margin:0 0 10px}
+.src td,.src th{text-align:left;vertical-align:top}
+.src td:nth-child(n+3){font-size:13px}
+.note{font-size:13px;color:var(--muted)}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.hidden{display:none !important}
+@media (max-width:700px){
+  .tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;margin:0;background:var(--panel);border-top:1px solid var(--line);border-bottom:0;padding:0 8px env(safe-area-inset-bottom);justify-content:space-around;gap:0}
+  .tabs button{flex:1;padding:12px 6px;border-bottom:0;border-top:3px solid transparent;font-size:13px}
+  .tabs button[aria-selected="true"]{border-top-color:var(--thread)}
+  .wrap{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+  #stamp{display:none}
+  #mini{display:flex !important}
+  .wrap{padding-bottom:calc(132px + env(safe-area-inset-bottom))}
+}
+#mini{display:none;position:fixed;left:0;right:0;bottom:calc(48px + env(safe-area-inset-bottom));z-index:19;background:var(--accent);color:var(--accent-ink);justify-content:space-between;align-items:center;gap:8px;padding:8px 16px;font-size:13px}
+#mini b{font:600 17px var(--mono)}
+#mini.hidden{display:none !important}
+@media (max-width:520px){ .hero{grid-template-columns:1fr} .big .v{font-size:24px} .bar{grid-template-columns:100px 1fr 66px} }
+@media (prefers-reduced-motion:no-preference){ .bar .t i{transition:width .25s ease} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <img src="icons/logo-128.png" width="48" height="48" alt="SATOR">
+      <div>
+        <h1>Kalkulačka výšivky</h1>
+        <div class="sub">SATOR reklamné štúdio · ceny v € bez DPH, ak nie je uvedené inak</div>
+      </div>
+    </div>
+    <div class="note" id="stamp">Trhové ceny overené 15. 11. 2026</div>
+  </header>
+
+  <div id="mini"><span>Za kus <b id="miniPiece">–</b></span><span>Spolu s DPH <b id="miniGross">–</b></span></div>
+  <div class="tabs" role="tablist">
+    <button role="tab" id="tab-calc" aria-selected="true" data-tab="calc">Kalkulačka</button>
+    <button role="tab" id="tab-price" aria-selected="false" data-tab="price">Cenník a nastavenia</button>
+    <button role="tab" id="tab-market" aria-selected="false" data-tab="market">Trh a zdroje</button>
+  </div>
+
+  <!-- ===== KALKULAČKA ===== -->
+  <section id="view-calc">
+    <div class="grid">
+      <div>
+        <div class="card">
+          <h2>1 · Čo sa vyšíva</h2>
+          <div class="f">
+            <div class="full">
+              <label for="cat">Materiál / typ výrobku</label>
+              <select id="cat"></select>
+              <div class="hint" id="catHint"></div>
+            </div>
+            <div>
+              <label for="qty">Počet kusov</label>
+              <input type="number" id="qty" min="1" step="1" value="25" inputmode="numeric">
+            </div>
+            <div>
+              <label for="prog">Program (Wilcom)</label>
+              <select id="prog">
+                <option value="new">Nový</option>
+                <option value="resize">Zmena veľkosti</option>
+                <option value="exist">Opakovaná</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>2 · Veľkosť výšivky</h2>
+          <div class="f">
+            <div class="full">
+              <label for="mode">Počítať podľa</label>
+              <select id="mode">
+                <option value="stitches">Počtu stehov (z Wilcomu)</option>
+                <option value="size">Rozmeru výšivky (odhad stehov)</option>
+              </select>
+            </div>
+            <div id="stWrap">
+              <label for="stitches">Počet stehov</label>
+              <input type="number" id="stitches" min="0" step="100" value="8000" inputmode="numeric">
+            </div>
+            <div>
+              <label for="w">Šírka výšivky, mm</label>
+              <input type="number" id="w" min="0" step="1" value="90" inputmode="numeric">
+            </div>
+            <div>
+              <label for="h">Výška výšivky, mm</label>
+              <input type="number" id="h" min="0" step="1" value="50" inputmode="numeric">
+            </div>
+            <div id="typeWrap" class="hidden">
+              <label for="stype">Prevládajúci steh</label>
+              <select id="stype">
+                <option value="tatami">Tatami (výplň)</option>
+                <option value="satin">Satén</option>
+                <option value="mix" selected>Zmiešaný</option>
+              </select>
+            </div>
+            <div id="shareWrap" class="hidden">
+              <label for="share">Podiel saténu, %</label>
+              <input type="number" id="share" min="0" max="100" step="5" value="40" inputmode="numeric">
+            </div>
+            <div id="coverWrap" class="hidden">
+              <label for="cover">Krytie obdĺžnika, %</label>
+              <input type="number" id="cover" min="5" max="100" step="5" value="60" inputmode="numeric">
+              <div class="hint">Koľko plochy v rozmere reálne pokryje niť. Text a obrys okolo 35 %, logo 50 až 70 %, plná výplň 90 až 100 %.</div>
+            </div>
+            <div id="estOut" class="full flag info hidden"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Údaje z Wilcomu pre čas na stroji</h2>
+          <div class="f">
+            <div>
+              <label for="cc">Zmeny farieb</label>
+              <input type="number" id="cc" min="0" step="1" value="4" inputmode="numeric">
+            </div>
+            <div>
+              <label for="trims">Strihy nite (trims)</label>
+              <input type="number" id="trims" min="0" step="1" value="12" inputmode="numeric">
+            </div>
+            <div>
+              <label for="wmin">Čas z Wilcomu, min / kus</label>
+              <input type="number" id="wmin" min="0" step="0.1" placeholder="nepovinné" inputmode="decimal">
+            </div>
+            <div class="full">
+              <label class="chk"><input type="checkbox" id="textOnly"> Len text jedným písmom (lacnejšia digitalizácia)</label>
+            </div>
+          </div>
+          <div class="hint">Nemá vplyv na cenu pre zákazníka, len na internú maržu.</div>
+        </div>
+
+        <div class="card">
+          <h2>3 · Príplatky a textil</h2>
+          <div class="f">
+            <div class="full"><label class="chk"><input type="checkbox" id="express"> Expres (do 48 hodín)</label></div>
+            <div class="full"><label class="chk"><input type="checkbox" id="hard"> Ťažko dostupné miesto (rukáv, vrecko, hotový výrobok so zošitou podšívkou)</label></div>
+            <div>
+              <label for="garment">Výrobok</label>
+              <select id="garment">
+                <option value="cust">Dodá zákazník</option>
+                <option value="own">Dodáme my</option>
+              </select>
+            </div>
+            <div id="gcWrap" class="hidden">
+              <label for="gcost">Nákupná cena kusu, €</label>
+              <input type="number" id="gcost" min="0" step="0.05" value="4.50" inputmode="decimal">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sticky">
+        <div class="card" id="resCard">
+          <h2>Cena</h2>
+          <div class="hero">
+            <div class="big main"><div class="k">Výšivka za kus</div><div class="v" id="rPiece">–</div></div>
+            <div class="big"><div class="k">Spolu s DPH</div><div class="v" id="rGross">–</div></div>
+          </div>
+          <div class="scroll" style="margin-top:12px">
+            <table class="lines" id="lines"></table>
+          </div>
+          <div class="flags" id="flags"></div>
+
+          <h3>Cenový rebríček pre zákazníka (výšivka a program, bez textilu)</h3>
+          <div class="scroll"><table id="ladder"></table></div>
+
+          <h3>Porovnanie s trhom, výšivka za kus</h3>
+          <div class="bars" id="bars"></div>
+          <div class="note" id="barsNote" style="margin-top:8px"></div>
+
+          <details>
+            <summary>Interná kalkulácia a marža</summary>
+            <div class="scroll"><table class="lines" id="internal"></table></div>
+            <div class="note" id="internalNote"></div>
+          </details>
+
+          <details>
+            <summary>Text cenovej ponuky</summary>
+            <pre class="quote" id="quote"></pre>
+            <button class="btn primary" type="button" id="copyQuote">Kopírovať text ponuky</button>
+            <span class="note" id="copyMsg" role="status"></span>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== CENNÍK ===== -->
+  <section id="view-price" class="hidden">
+    <div class="card">
+      <h2>Cenník SATOR</h2>
+      <p class="note" style="margin-top:0">Predvolené hodnoty vychádzajú z verejných cenníkov konkurencie (záložka Trh a zdroje). Zmeny sa ukladajú iba v tomto prehliadači. Pri novom vydaní stránky sa môžu stratiť, preto si finálne čísla zapíšte inde.</p>
+      <div id="settings"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
+        <button class="btn" type="button" id="resetSettings">Obnoviť predvolený cenník</button>
+        <span class="note" id="saveMsg" role="status"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== TRH ===== -->
+  <section id="view-market" class="hidden">
+    <div class="card">
+      <h2>Čo ukázal prieskum trhu</h2>
+      <div class="two">
+        <div>
+          <h3>Plochý textil</h3>
+          <p>Slovenské štúdiá s verejným cenníkom účtujú pri 6 a viac kusoch približne <b>0,25 až 0,50 € za 1000 stehov</b>, klesá s množstvom. Pri 1 až 5 kusoch sa používa pevná cena podľa pásma: do 5000 stehov 3 až 5 €, do 10 000 stehov 7 až 9 €, do 20 000 stehov 10 až 13 €.</p>
+        </div>
+        <div>
+          <h3>Vyšívací program</h3>
+          <p>Jednorazovo <b>20 až 30 € bez DPH</b> (BK Studio od 20 €, Smartmen 24 €, Snoper od 29,90 € s DPH). Creattiva ho nechá zadarmo od 20 kusov. Český trh: 300 až 700 Kč podľa zložitosti.</p>
+        </div>
+        <div>
+          <h3>Šiltovky</h3>
+          <p>Slovenské cenníky nemajú samostatnú sadzbu. Promotex uvádza 3 až 15 € za šiltovku (spolu s výrobkom). Čistytriko.cz pripočítava manipulačný príplatok za šiltovky. Vysijmito.cz účtuje 2D aj 3D výšivku rovnako, ale program na 3D začína na 500 Kč oproti 300 Kč. Zahraničné zdroje uvádzajú pre čelo šiltovky 3000 až 7000 stehov.</p>
+        </div>
+        <div>
+          <h3>Koža</h3>
+          <p>Verejný slovenský ani český cenník výšivky na kožu som nenašiel. Zahraniční vyšívači v diskusiách odporúčajú účtovať <b>viac ako za textil</b>: osobitná digitalizácia s väčšími rozstupmi stehov (hrozí vypárať kožu ako perforáciu), špeciálne upínanie a písomný súhlas zákazníka s rizikom. Preto sú koeficient a príplatky pre kožu v cenníku moje odhady, ktoré si overte na vlastných skúškach.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Hustota stehov na cm²: satén a tatami</h2>
+      <div class="scroll">
+      <table class="src">
+        <tr><th>Steh</th><th>Hodnota zo zdroja</th><th>Na cm²</th><th>Zdroj</th></tr>
+        <tr><td>Tatami, štandard Wilcom (rady 0,4 mm, steh 3 až 4 mm)</td><td>okolo 0,9 vpichu na mm²</td><td>okolo 90</td><td><a href="https://stitchtoolbox.com/guides/embroidery-stitch-density-explained">Stitch Toolbox</a></td></tr>
+        <tr><td>Tatami, výpočet z rozstupu 0,4 mm</td><td>1 ÷ (0,4 × 3,5 až 4 mm)</td><td>63 až 71</td><td>vlastný výpočet</td></tr>
+        <tr><td>Výplň, bežná hustota, steh 6 mm</td><td>1000 / in²</td><td>155</td><td><a href="https://www.amefird.com/wp-content/uploads/2010/02/CommonEmbStitchMatrix-2-11-10.pdf">Amefird</a></td></tr>
+        <tr><td>Výplň, steh 4 mm (podklad pod ďalšie stehy)</td><td>1500 / in²</td><td>232</td><td>Amefird</td></tr>
+        <tr><td>Výplň, pravidlo digitalizátorov</td><td>1200 / in²</td><td>186</td><td><a href="https://www.jadigitizing.com/j-armenta-blog/2017/1/24/estimating-stitch-counts">JA Digitizing</a></td></tr>
+        <tr><td>Design prevažne z výplní</td><td>500 až 800 / in²</td><td>78 až 124</td><td><a href="https://embroideryli.com/learn/stitch-count-estimation">embroideryli.com</a></td></tr>
+        <tr><td>Design prevažne zo saténu</td><td>800 až 1200 / in²</td><td>124 až 186</td><td>embroideryli.com</td></tr>
+        <tr><td>Satén, stĺpec 2 až 3 mm</td><td>125 st. na palec dĺžky (150 s podkladom)</td><td>okolo 197</td><td>Amefird, prepočet na plochu</td></tr>
+        <tr><td>Satén, stĺpec 3 až 4 mm</td><td>138 st. na palec dĺžky</td><td>okolo 155</td><td>Amefird, prepočet na plochu</td></tr>
+        <tr><td>Satén, stĺpec 4 až 6 mm</td><td>150 st. na palec dĺžky</td><td>okolo 118</td><td>Amefird, prepočet na plochu</td></tr>
+        <tr><td>Satén, stĺpec 6 až 8 mm</td><td>175 st. na palec dĺžky (200 s podkladom)</td><td>okolo 98</td><td>Amefird, prepočet na plochu</td></tr>
+      </table>
+      </div>
+      <p class="note">Satén je na ploche hustejší než tatami a čím je stĺpec užší, tým viac stehov na cm². Zdroje sa rozchádzajú, hlavne pri tatami, preto sú predvolené hodnoty v kalkulačke vlastný výber: tatami 100 a satén 140 st/cm² krytej plochy. Presnejšie ich nastavíte z vlastných súborov: počet stehov z Wilcomu vydeľte plochou, ktorú niť skutočne pokrýva (záložka Cenník a nastavenia).</p>
+    </div>
+
+    <div class="card">
+      <h2>Zdroje</h2>
+      <div class="scroll">
+      <table class="src">
+        <tr><th>Poskytovateľ</th><th>Krajina</th><th>Čo publikuje</th></tr>
+        <tr><td><a href="https://www.vysivanie-lm.sk/cennik">vysivanie-lm.sk</a></td><td>SK</td><td>1 až 5 ks: do 5000 st. 5 €, do 10 000 st. 9 €, do 20 000 st. 13 €. Od 6 ks: 0,50 / 0,45 / 0,40 / 0,35 € za 1000 st. (6, 20, 50, 100 ks).</td></tr>
+        <tr><td><a href="https://creattiva.sk/en/m/strojove-vysivky-50/cennik-vysiviek-51/">creattiva.sk</a></td><td>SK</td><td>1 až 5 ks: 3 / 7 / 10 €. Od 6 ks: 0,40 / 0,35 / 0,30 / 0,25 € za 1000 st. (cenu beriem ako za 1000 stehov). Digitalizácia 7 až 30 €, od 20 ks zdarma.</td></tr>
+        <tr><td><a href="https://www.mon-ole.sk/cennik/">mon-ole.sk</a></td><td>SK</td><td>Do 5000 st. od 3,50 €, do 10 000 od 7,50 €, nad 10 000 od 12 €. Príplatok za ťažko dostupné miesta.</td></tr>
+        <tr><td><a href="https://www.bkstudio.sk/a/strojove-vysivanie">bkstudio.sk</a></td><td>SK</td><td>Výšivka od 2,50 € bez DPH, program od 20 € bez DPH. Počet farieb cenu neovplyvňuje.</td></tr>
+        <tr><td><a href="https://www.smartmen.sk/p/463/vysivka-firemne-logo-na-odevy">smartmen.sk</a></td><td>SK</td><td>Od 2,00 € bez DPH, minimum 12 ks, program 24 € bez DPH.</td></tr>
+        <tr><td><a href="https://snoper.sk/p/vysivky">snoper.sk</a></td><td>SK</td><td>Text jeden riadok 4 € s DPH, logo 8 až 10 cm 6,90 € s DPH, nastavenie stroja od 29,90 € s DPH.</td></tr>
+        <tr><td><a href="https://www.vysivky.sk/category/vysivky-nasivky/">vysivky.sk</a></td><td>SK</td><td>Príprava okolo 20 €, vyšívanie 3 až 15 € za kus, 3D puff na šiltovky 2 až 3 mm.</td></tr>
+        <tr><td><a href="https://promotex.sk/siltovky-s-potlacou/">promotex.sk</a></td><td>SK</td><td>Šiltovka s výšivkou 3 až 15 € za kus (aj s výrobkom). 3D výšivka len na štruktúrovanú prednú časť.</td></tr>
+        <tr><td><a href="https://www.cistytriko.cz/potisk/vysivka-nasivka/">cistytriko.cz</a></td><td>CZ</td><td>Malé logo od 80 Kč, stredné od 150 Kč, veľké od 350 Kč. Program od 700 Kč. Príplatok za šiltovky, vesty, froté a fleece.</td></tr>
+        <tr><td><a href="https://vysijmito.cz/strojni-vysivka-kalkulace-ceny/">vysijmito.cz</a></td><td>CZ</td><td>Výšivka 35 až 95 Kč bez DPH (2D aj 3D). Program: text od 200 Kč, logo od 300 Kč, 3D od 500 Kč.</td></tr>
+        <tr><td><a href="https://www.activ.cz/vyroba-vysivek/">activ.cz</a></td><td>CZ</td><td>Výšivka 5 až 8 cm okolo 12 Kč pri 70 a viac kusoch. Program 400 až 800 Kč, jeden program platí pre všetky varianty vrátane čiapok.</td></tr>
+        <tr><td><a href="https://zdigitizing.com/how-much-does-embroidery-cost/">zdigitizing.com</a></td><td>USA</td><td>1 až 3 USD za 1000 st., čelo šiltovky 3000 až 7000 st., koža a hrubé materiály s príplatkom.</td></tr>
+        <tr><td><a href="https://digitsmith.com/node/21032">digitsmith.com (diskusia)</a></td><td>USA</td><td>Koža: účtovať viac, osobitná digitalizácia, osobitné upínanie, súhlas zákazníka s rizikom.</td></tr>
+        <tr><td><a href="https://help.wilcom.com/portal/en/kb/articles/embroidery-pricing">Wilcom: Embroidery pricing</a></td><td>Wilcom</td><td>Cena vychádza z tabuľky stehy × množstvo, k tomu fixné nastavenie. Osobitné tabuľky pre šiltovky, špeciálne tkaniny a ťažké miesta.</td></tr>
+      </table>
+      </div>
+      <p class="note">Niektoré cenníky neuvádzajú, či ide o ceny s DPH alebo bez DPH. Porovnanie v kalkulačke ich berie tak, ako sú zverejnené. České ceny sú prepočítané približne kurzom 24 až 25 Kč za 1 €.</p>
+    </div>
+  </section>
+</div>
+
+<script>
+/* ============ LOGIKA (čistá, testovateľná) ============ */
+// LOGIC-START
+const DEFAULTS = {
+  vat: 23,
+  minOrder: 10,
+  express: 25,
+  hard: 15,
+  garmentMarkup: 35,
+  small: { use: 0, b1: 4.5, b2: 8, b3: 12, over: 0.6 },
+  dens: { tatami: 100, satin: 140 },
+  tiers: [
+    { from: 6,   rate: 0.80 },
+    { from: 20,  rate: 0.80 },
+    { from: 50,  rate: 0.80 },
+    { from: 100, rate: 0.80 },
+    { from: 250, rate: 0.80 }
+  ],
+  dig: { t1: 18, t2: 25, t3: 38, t4: 55, text: 12, resize: 8, waiveFrom: 0 },
+  cats: {
+    flat:    { name: 'Textil: tričko, polokošeľa, mikina', coef: 1.00, minPiece: 3.5, spm: 650, hoop: 1.0, material: 0.12, digAdd: 0,  digMin: 0,
+               hint: 'Základná sadzba. Textil aspoň 150 g/m² (tenšie materiály sa sťahujú).' },
+    heavy:   { name: 'Hrubý textil: froté, fleece, softshell, vesta', coef: 1.15, minPiece: 4.0, spm: 600, hoop: 1.5, material: 0.20, digAdd: 0, digMin: 0,
+               hint: 'Pomalšie upínanie, vodou rozpustná fólia navrch. Konkurencia (Čistytriko) účtuje príplatok.' },
+    cap:     { name: 'Šiltovka: plochá výšivka', coef: 1.20, minPiece: 4.0, spm: 550, hoop: 2.0, material: 0.10, digAdd: 0, digMin: 0,
+               hint: 'Čelo šiltovky, štandardne 3000 až 7000 stehov. Upínanie na cap driver a nižšia rýchlosť.' },
+    cap3d:   { name: 'Šiltovka: 3D puff', coef: 1.45, minPiece: 5.0, spm: 500, hoop: 2.2, material: 0.30, digAdd: 15, digMin: 20,
+               hint: 'Penová podložka, vyšší program (konkurencia: program 3D o 67 % drahší). Len na štruktúrovanú prednú časť, nie na sieťku.' },
+    leather: { name: 'Koža / koženka', coef: 1.50, minPiece: 6.0, spm: 450, hoop: 2.5, material: 0.30, digAdd: 10, digMin: 20,
+               hint: 'Riziko perforácie: väčšie rozstupy stehov, skúšobný kus, súhlas zákazníka. Sadzba je odhad, verejný cenník som nenašiel.' }
+  },
+  cost: { heads: 4, machineHour: 5, operatorHour: 12, digitizerHour: 20, setupMin: 10, ccSec: 10, trimSec: 4, thread: 0.01,
+          digMin1: 25, digMin2: 40, digMin3: 60, digMin4: 90 }
+};
+
+function clone(o){ return JSON.parse(JSON.stringify(o)); }
+function round05(x){ return Math.round(x * 20) / 20; }
+function tierRate(qty, S){ let r = S.tiers[0].rate; for (const t of S.tiers){ if (qty >= t.from) r = t.rate; } return r; }
+
+function basePiece(st, qty, S){
+  if (qty <= 5 && S.small.use){
+    const s = S.small;
+    if (st <= 5000) return s.b1;
+    if (st <= 10000) return s.b2;
+    if (st <= 20000) return s.b3;
+    return s.b3 + (st - 20000) / 1000 * s.over;
+  }
+  return st / 1000 * (qty < S.tiers[0].from ? S.tiers[0].rate : tierRate(qty, S));
+}
+
+function estStitches(w, h, type, share, cover, S){
+  const area = w * h / 100;               // cm²
+  const sh = type === 'satin' ? 1 : type === 'tatami' ? 0 : Math.min(100, Math.max(0, share)) / 100;
+  const d = sh * S.dens.satin + (1 - sh) * S.dens.tatami;   // st/cm² krytej plochy
+  return Math.round(area * Math.min(100, Math.max(0, cover)) / 100 * d / 10) * 10;
+}
+
+function digTier(st){ return st <= 5000 ? 1 : st <= 10000 ? 2 : st <= 20000 ? 3 : 4; }
+
+function embPiece(st, qty, catKey, flags, S){
+  const cat = S.cats[catKey];
+  let b = basePiece(st, qty, S) * cat.coef;
+  b = Math.max(b, cat.minPiece);
+  let m = 1;
+  if (flags.hard) m += S.hard / 100;
+  if (flags.express) m += S.express / 100;
+  return round05(b * m);
+}
+
+function calc(i, S){
+  const cat = S.cats[i.cat];
+  const qty = Math.max(1, Math.round(i.qty || 1));
+  const st = Math.max(0, i.stitches || 0);
+  const piece = embPiece(st, qty, i.cat, i, S);
+  let embTotal = piece * qty;
+  const minApplied = embTotal < S.minOrder;
+  if (minApplied) embTotal = S.minOrder;
+
+  // vyšívací program
+  let dig = 0, waived = false;
+  const tier = digTier(st);
+  if (i.prog === 'new'){
+    dig = i.textOnly ? S.dig.text : [0, S.dig.t1, S.dig.t2, S.dig.t3, S.dig.t4][tier];
+    dig += cat.digAdd;
+    if (S.dig.waiveFrom > 0 && qty >= S.dig.waiveFrom){ dig = 0; waived = true; }
+  } else if (i.prog === 'resize'){
+    dig = S.dig.resize;
+  }
+
+  // výrobok
+  let garmentPiece = 0;
+  if (i.garment === 'own') garmentPiece = round05((i.gcost || 0) * (1 + S.garmentMarkup / 100));
+  const garmentTotal = garmentPiece * qty;
+
+  const net = embTotal + dig + garmentTotal;
+  const vat = net * S.vat / 100;
+  const gross = net + vat;
+
+  // interné náklady
+  const C = S.cost;
+  const batches = Math.ceil(qty / C.heads);
+  const stitchMin = i.wmin > 0 ? i.wmin : st / cat.spm + (i.cc || 0) * C.ccSec / 60 + (i.trims || 0) * C.trimSec / 60;
+  const machineMin = batches * stitchMin + qty * cat.hoop + C.setupMin;
+  const machineCost = machineMin / 60 * (C.machineHour + C.operatorHour);
+  const materials = qty * (cat.material + st / 1000 * C.thread);
+  let digMinutes = 0;
+  if (i.prog === 'new') digMinutes = (i.textOnly ? 15 : [0, C.digMin1, C.digMin2, C.digMin3, C.digMin4][tier]) + cat.digMin;
+  else if (i.prog === 'resize') digMinutes = 10;
+  const digCost = digMinutes / 60 * C.digitizerHour;
+  const garmentCost = i.garment === 'own' ? qty * (i.gcost || 0) : 0;
+  const costEmb = machineCost + materials + digCost;
+  const revEmb = embTotal + dig;
+  const marginEmb = revEmb - costEmb;
+  const marginEmbPct = revEmb > 0 ? marginEmb / revEmb : 0;
+  const totalCost = costEmb + garmentCost;
+  const margin = net - totalCost;
+  const marginPct = net > 0 ? margin / net : 0;
+  const perMachineHour = machineMin > 0 ? embTotal / (machineMin / 60) : 0;
+
+  // kontrola hustoty
+  const area = (i.w || 0) * (i.h || 0) / 100; // cm²
+  const density = area > 0 ? st / area : 0;
+
+  return { qty, st, piece, embTotal, minApplied, dig, waived, garmentPiece, garmentTotal, net, vat, gross,
+           stitchMin, machineMin, machineCost, materials, digCost, digMinutes, garmentCost, costEmb, revEmb, marginEmb, marginEmbPct,
+           totalCost, margin, marginPct, perMachineHour, density, area, batches };
+}
+
+// konkurencia (plochý textil, cena výšivky za kus tak, ako ju zverejňujú)
+function competitors(st, qty){
+  const out = [];
+  // vysivanie-lm.sk
+  { let p = null, note = '';
+    if (qty <= 5){ if (st <= 5000) p = 5; else if (st <= 10000) p = 9; else if (st <= 20000) p = 13; else note = 'nad 20 000 st. mimo cenníka'; }
+    else { const r = qty >= 100 ? .35 : qty >= 50 ? .40 : qty >= 20 ? .45 : .50; p = st / 1000 * r; }
+    out.push({ name: 'vysivanie-lm.sk', p, note }); }
+  // creattiva.sk
+  { let p = null, note = '';
+    if (qty <= 5){ if (st <= 5000) p = 3; else if (st <= 10000) p = 7; else if (st <= 20000) p = 10; else note = 'nad 20 000 st. mimo cenníka'; }
+    else { const r = qty >= 100 ? .25 : qty >= 50 ? .30 : qty >= 20 ? .35 : .40; p = st / 1000 * r; }
+    out.push({ name: 'creattiva.sk', p, note }); }
+  // mon-ole.sk (ceny „od“)
+  { const p = st <= 5000 ? 3.5 : st <= 10000 ? 7.5 : 12; out.push({ name: 'mon-ole.sk (od)', p, note: '' }); }
+  return out;
+}
+
+function ladder(i, S){
+  const qs = [1, 3, 5, 10, 25, 50, 100, 250, 500];
+  return qs.map(q => { const r = calc(Object.assign({}, i, { qty: q, garment: 'cust' }), S);
+    return { q, piece: r.minApplied ? r.embTotal / q : r.piece, total: r.embTotal + r.dig }; });
+}
+// LOGIC-END
+
+/* ============ UI ============ */
+const $ = id => document.getElementById(id);
+const STORE_KEY = 'sator-vysivky-cennik-v2';
+const eur = n => (isFinite(n) ? n : 0).toLocaleString('sk-SK', { style: 'currency', currency: 'EUR' });
+const nf = n => (isFinite(n) ? n : 0).toLocaleString('sk-SK', { maximumFractionDigits: 0 });
+
+function merge(base, over){
+  for (const k in over){
+    if (over[k] && typeof over[k] === 'object' && !Array.isArray(over[k]) && base[k] && typeof base[k] === 'object') merge(base[k], over[k]);
+    else base[k] = over[k];
+  }
+  return base;
+}
+let S = (function(){
+  const s = clone(DEFAULTS);
+  try { const raw = localStorage.getItem(STORE_KEY); if (raw) merge(s, JSON.parse(raw)); } catch (e) {}
+  return s;
+})();
+function saveS(){ try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); return true; } catch (e) { return false; } }
+
+function readInput(){
+  const num = id => { const v = parseFloat($(id).value); return isFinite(v) ? v : 0; };
+  const mode = $('mode').value;
+  const est = estStitches(num('w'), num('h'), $('stype').value, num('share'), num('cover'), S);
+  return {
+    mode, est, cat: $('cat').value, qty: num('qty'), prog: $('prog').value,
+    stitches: mode === 'size' ? est : num('stitches'), cc: num('cc'), trims: num('trims'), wmin: num('wmin'),
+    w: num('w'), h: num('h'), textOnly: $('textOnly').checked,
+    express: $('express').checked, hard: $('hard').checked,
+    garment: $('garment').value, gcost: num('gcost')
+  };
+}
+
+function fillCats(){
+  const sel = $('cat'); const cur = sel.value;
+  sel.innerHTML = '';
+  for (const k in S.cats){ const o = document.createElement('option'); o.value = k; o.textContent = S.cats[k].name; sel.appendChild(o); }
+  if (cur && S.cats[cur]) sel.value = cur;
+}
+
+function render(){
+  const i = readInput();
+  const r = calc(i, S);
+  const cat = S.cats[i.cat];
+  $('catHint').textContent = cat.hint;
+  $('gcWrap').classList.toggle('hidden', i.garment !== 'own');
+  const sz = i.mode === 'size';
+  $('stWrap').classList.toggle('hidden', sz);
+  $('typeWrap').classList.toggle('hidden', !sz);
+  $('shareWrap').classList.toggle('hidden', !sz || $('stype').value !== 'mix');
+  $('coverWrap').classList.toggle('hidden', !sz);
+  $('estOut').classList.toggle('hidden', !sz);
+  if (sz){
+    const a = i.w * i.h / 100;
+    $('estOut').textContent = `Odhad: ${nf(i.est)} stehov z ${nf(a)} cm² (hustota satén ${S.dens.satin}, tatami ${S.dens.tatami} st/cm² krytej plochy). Presný počet doplníte po digitalizácii vo Wilcome.`;
+  }
+
+  $('rPiece').textContent = eur(r.minApplied ? r.embTotal / r.qty : r.piece);
+  $('rGross').textContent = eur(r.gross);
+  $('miniPiece').textContent = eur(r.minApplied ? r.embTotal / r.qty : r.piece);
+  $('miniGross').textContent = eur(r.gross);
+
+  // riadky
+  let h = '';
+  const row = (a, b, c) => `<tr><td>${a}</td><td class="m">${b || ''}</td><td class="m">${c}</td></tr>`;
+  h += row(`Výšivka ${sz ? 'cca ' : ''}${nf(r.st)} st. × ${nf(r.qty)} ks`, `${eur(r.minApplied ? r.embTotal / r.qty : r.piece)} / ks`, eur(r.embTotal));
+  if (i.prog === 'new' || i.prog === 'resize') h += row(r.waived ? 'Vyšívací program (zrušený pri tomto množstve)' : (i.prog === 'new' ? 'Vyšívací program, jednorazovo' : 'Úprava veľkosti programu'), '', eur(r.dig));
+  if (i.garment === 'own') h += row('Výrobok', `${eur(r.garmentPiece)} / ks`, eur(r.garmentTotal));
+  h += `<tr class="tot"><td>Spolu bez DPH</td><td></td><td class="m">${eur(r.net)}</td></tr>`;
+  h += row(`DPH ${S.vat} %`, '', eur(r.vat));
+  h += `<tr class="tot"><td>Spolu s DPH</td><td></td><td class="m">${eur(r.gross)}</td></tr>`;
+  $('lines').innerHTML = h;
+
+  // upozornenia
+  const fl = [];
+  const add = (cls, t) => fl.push(`<div class="flag ${cls}">${t}</div>`);
+  if (i.qty >= 1 && r.qty <= 5 && r.st > 0){
+    const r6 = calc(Object.assign({}, i, { qty: 6 }), S);
+    const t5 = r.embTotal, t6 = r6.embTotal;
+    if (t6 < t5) add('info', `Pri 6 kusoch vyjde výšivka lacnejšie (${eur(t6)}) ako pri ${nf(r.qty)} ks (${eur(t5)}). Ponúknite zákazníkovi vyšší počet.`);
+  }
+  if (r.minApplied) add('info', `Minimálna hodnota zákazky na výšivku je ${eur(S.minOrder)}, cena za kus je prepočítaná.`);
+  if (r.st === 0) add('bad', sz ? 'Zadajte šírku a výšku výšivky.' : 'Zadajte počet stehov z Wilcomu.');
+  if (sz && r.area > 0 && r.st > 0) add('info', `Cena výšivky vychádza na ${eur((r.minApplied ? r.embTotal / r.qty : r.piece) / r.area)} za cm² rozmeru. Pri odhade z rozmeru ponuku označte ako orientačnú.`);
+  if (r.density > 0){
+    const lim = i.cat === 'leather' ? 110 : 250;
+    if (r.density > lim) add(i.cat === 'leather' ? 'bad' : 'warn',
+      `Hustota ${nf(r.density)} st/cm² je ${i.cat === 'leather' ? 'príliš vysoká pre kožu (riziko perforácie, orientačný limit okolo 110). V Wilcome zväčšite rozstupy stehov a odstráňte prekrývanie.' : 'veľmi vysoká (bežne 80 až 180 vrátane podšívky). Skontrolujte hustotu a podklad vo Wilcome, hrozí tuhá výšivka.'}`);
+    else if (r.density < 20 && r.st > 0) add('info', `Hustota ${nf(r.density)} st/cm² je nízka. Sedí rozmer výšivky s počtom stehov?`);
+  }
+  if (i.cat === 'leather') add('warn', 'Koža: spravte skúšobný kus, nechajte si od zákazníka potvrdiť riziko poškodenia a použite ostrú ihlu a pevnejší podklad.');
+  if (i.cat === 'cap3d' && r.st > 0 && r.st < 1500) add('warn', '3D puff pod 1500 stehov je zvyčajne príliš malý, text sa nezaplní.');
+  if ((i.cat === 'cap' || i.cat === 'cap3d') && r.st > 9000) add('warn', 'Čelo šiltovky má bežne 3000 až 7000 stehov. Pri väčšom motíve skontrolujte umiestnenie.');
+  if (i.cat === 'flat' && i.w > 0 && i.w < 25) add('info', 'Výšivka pod 25 mm môže byť slabo čitateľná (text aspoň 5 mm vysoký).');
+  if (r.marginEmbPct < 0.15 && r.st > 0) add('bad', `Marža na výšivke je len ${Math.round(r.marginEmbPct * 100)} %. Zvýšte sadzbu alebo minimum v cenníku.`);
+  else if (r.marginEmbPct < 0.30 && r.st > 0) add('warn', `Marža na výšivke je ${Math.round(r.marginEmbPct * 100)} %, pod odporúčanými 30 %.`);
+  $('flags').innerHTML = fl.join('');
+
+  // rebríček
+  const L = ladder(i, S);
+  let t = '<tr><th>Počet</th><th class="m">Výšivka / ks</th><th class="m">Spolu s programom</th></tr>';
+  for (const x of L){
+    t += `<tr class="${x.q === r.qty ? 'cur' : ''}"><td>${nf(x.q)} ks</td><td class="m">${eur(x.piece)}</td><td class="m">${eur(x.total)}</td></tr>`;
+  }
+  if (!L.some(x => x.q === r.qty)) t += `<tr class="cur"><td>${nf(r.qty)} ks (vaša zákazka)</td><td class="m">${eur(r.minApplied ? r.embTotal / r.qty : r.piece)}</td><td class="m">${eur(r.embTotal + r.dig)}</td></tr>`;
+  $('ladder').innerHTML = t;
+
+  // trh
+  const comps = competitors(r.st, r.qty);
+  const ours = r.minApplied ? r.embTotal / r.qty : r.piece;
+  const rows = [{ name: 'SATOR', p: ours, us: true }].concat(comps.map(c => ({ name: c.name, p: c.p, note: c.note })));
+  const maxP = Math.max(0.01, ...rows.map(x => x.p || 0));
+  $('bars').innerHTML = rows.map(x => x.p == null
+    ? `<div class="bar na"><span>${x.name}</span><span class="note">${x.note}</span><span class="n">–</span></div>`
+    : `<div class="bar ${x.us ? 'us' : ''}"><span>${x.name}</span><div class="t"><i style="width:${Math.max(2, x.p / maxP * 100)}%"></i></div><span class="n">${eur(x.p)}</span></div>`).join('');
+  const vals = comps.filter(c => c.p != null).map(c => c.p);
+  let verdict = '';
+  if (vals.length && r.st > 0){
+    const lo = Math.min(...vals), hi = Math.max(...vals), avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+    const rel = (ours - avg) / avg * 100;
+    const pill = ours < lo * 0.97 ? '<span class="pill warn">pod trhom</span>' : ours > hi * 1.03 ? '<span class="pill bad">nad trhom</span>' : '<span class="pill good">v pásme trhu</span>';
+    verdict = `${pill} Trh ${eur(lo)} až ${eur(hi)}, priemer ${eur(avg)}. Vaša cena je ${rel >= 0 ? '+' : ''}${Math.round(rel)} % oproti priemeru. `;
+  }
+  $('barsNote').innerHTML = verdict + (i.cat === 'flat' ? '' : 'Konkurencia zverejňuje cenníky pre plochý textil, príplatok za šiltovky a kožu neuvádza, preto vaša cena zahŕňa váš príplatok.');
+
+  // interné
+  const il = (a, b) => `<tr><td>${a}</td><td class="m">${b}</td></tr>`;
+  let it = '';
+  it += il(`Strojový čas (${r.batches} dávok po ${S.cost.heads} hlavách), min`, nf(r.machineMin));
+  it += il('Čas jedného kusa na stroji, min', r.stitchMin.toFixed(1).replace('.', ','));
+  it += il('Stroj a obsluha', eur(r.machineCost));
+  it += il('Materiál (podklad, nite)', eur(r.materials));
+  it += il(`Digitalizácia (${r.digMinutes} min)`, eur(r.digCost));
+  if (r.garmentCost) it += il('Nákup výrobkov', eur(r.garmentCost));
+  it += `<tr class="tot"><td>Náklady spolu</td><td class="m">${eur(r.totalCost)}</td></tr>`;
+  it += il('Marža na výšivke a programe', `${eur(r.marginEmb)} (${Math.round(r.marginEmbPct * 100)} %)`);
+  it += il('Marža celej zákazky', `${eur(r.margin)} (${Math.round(r.marginPct * 100)} %)`);
+  it += il('Tržba za výšivku na hodinu stroja', eur(r.perMachineHour));
+  $('internal').innerHTML = it;
+  $('internalNote').textContent = 'Náklady počítajú so strojom na ' + S.cost.heads + ' hlavy a rýchlosťou ' + cat.spm + ' stehov/min. Hodnoty upravíte v záložke Cenník a nastavenia. Čas z Wilcomu prepíše vlastný odhad času.';
+
+  // ponuka
+  const q = [];
+  q.push('Cenová ponuka: strojová výšivka');
+  q.push(`Materiál: ${cat.name}`);
+  q.push(`Výšivka: ${sz ? 'cca ' : ''}${nf(r.st)} stehov${sz ? ' (odhad z rozmeru)' : ''}${i.w && i.h ? `, ${nf(i.w)} × ${nf(i.h)} mm` : ''}`);
+  q.push(`Množstvo: ${nf(r.qty)} ks`);
+  q.push(`Cena výšivky: ${eur(ours)} / ks bez DPH`);
+  if (i.prog === 'new' || i.prog === 'resize') q.push(`Vyšívací program: ${r.waived ? 'zdarma' : eur(r.dig) + ' jednorazovo bez DPH'}`);
+  if (i.garment === 'own') q.push(`Výrobok: ${eur(r.garmentPiece)} / ks bez DPH`);
+  if (i.express) q.push('Expresné spracovanie do 48 hodín');
+  q.push(`Spolu bez DPH: ${eur(r.net)}`);
+  q.push(`Spolu s DPH ${S.vat} %: ${eur(r.gross)}`);
+  if (i.cat === 'leather') q.push('Poznámka: pri koži vyhotovujeme skúšobný kus, zákazník potvrdzuje riziko poškodenia materiálu.');
+  $('quote').textContent = q.join('\n');
+}
+
+/* ----- nastavenia ----- */
+const SETTINGS_SPEC = [
+  { title: 'Všeobecné', fields: [
+    ['vat', 'DPH, %'], ['minOrder', 'Minimum zákazky na výšivku, €'], ['express', 'Expres príplatok, %'], ['hard', 'Ťažké miesto, príplatok %'], ['garmentMarkup', 'Prirážka na výrobok, %'] ] },
+  { title: 'Odhad stehov z rozmeru (st/cm² krytej plochy)', fields: [ ['dens.tatami', 'tatami'], ['dens.satin', 'satén'] ] },
+  { title: '1 až 5 kusov (voliteľná cena podľa pásma stehov)', fields: [
+    ['small.use', 'použiť pásma (1 = áno, 0 = nie)'], ['small.b1', 'do 5000 st., €/ks'], ['small.b2', 'do 10 000 st., €/ks'], ['small.b3', 'do 20 000 st., €/ks'], ['small.over', 'nad 20 000: € za 1000 st.'] ] },
+  { title: 'Sadzba € za 1000 stehov podľa množstva (základ 0,80 €)', fields: [
+    ['tiers.0.rate', 'od 1 ks'], ['tiers.1.rate', 'od 20 ks'], ['tiers.2.rate', 'od 50 ks'], ['tiers.3.rate', 'od 100 ks'], ['tiers.4.rate', 'od 250 ks'] ] },
+  { title: 'Vyšívací program (Wilcom), €', fields: [
+    ['dig.t1', 'do 5000 st.'], ['dig.t2', 'do 10 000 st.'], ['dig.t3', 'do 20 000 st.'], ['dig.t4', 'nad 20 000 st.'], ['dig.text', 'len text'], ['dig.resize', 'úprava veľkosti'], ['dig.waiveFrom', 'zadarmo od ks (0 = nikdy)'] ] },
+  { title: 'Interné náklady', fields: [
+    ['cost.heads', 'počet hláv stroja'], ['cost.machineHour', 'stroj, €/h'], ['cost.operatorHour', 'obsluha, €/h'], ['cost.digitizerHour', 'digitalizácia, €/h'],
+    ['cost.setupMin', 'nastavenie zákazky, min'], ['cost.ccSec', 'zmena farby, s'], ['cost.trimSec', 'strih nite, s'], ['cost.thread', 'nite, € za 1000 st.'],
+    ['cost.digMin1', 'digit. do 5000 st., min'], ['cost.digMin2', 'digit. do 10 000, min'], ['cost.digMin3', 'digit. do 20 000, min'], ['cost.digMin4', 'digit. nad 20 000, min'] ] }
+];
+const CAT_FIELDS = [['coef', 'koeficient'], ['minPiece', 'minimum €/ks'], ['spm', 'rýchlosť st/min'], ['hoop', 'upnutie min/ks'], ['material', 'materiál €/ks'], ['digAdd', 'program +€'], ['digMin', 'digit. +min']];
+
+function getPath(o, p){ return p.split('.').reduce((a, k) => a[k], o); }
+function setPath(o, p, v){ const ks = p.split('.'); const last = ks.pop(); const t = ks.reduce((a, k) => a[k], o); t[last] = v; }
+function fieldHtml(path, label){
+  return `<div><label for="s_${path}">${label}</label><input type="number" step="any" id="s_${path}" data-path="${path}" value="${getPath(S, path)}" inputmode="decimal"></div>`;
+}
+function renderSettings(){
+  let h = '';
+  for (const g of SETTINGS_SPEC){
+    h += `<h3>${g.title}</h3><div class="sgrid">${g.fields.map(f => fieldHtml(f[0], f[1])).join('')}</div>`;
+  }
+  h += '<h3>Koeficienty podľa materiálu</h3>';
+  for (const k in S.cats){
+    h += `<details><summary>${S.cats[k].name}</summary><div class="sgrid">${CAT_FIELDS.map(f => fieldHtml('cats.' + k + '.' + f[0], f[1])).join('')}</div></details>`;
+  }
+  $('settings').innerHTML = h;
+}
+
+/* ----- udalosti ----- */
+function showTab(name){
+  for (const n of ['calc', 'price', 'market']){
+    $('view-' + n).classList.toggle('hidden', n !== name);
+    $('tab-' + n).setAttribute('aria-selected', String(n === name));
+  }
+  $('mini').classList.toggle('hidden', name !== 'calc');
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
+document.querySelectorAll('#view-calc input, #view-calc select').forEach(el => { el.addEventListener('input', render); el.addEventListener('change', render); });
+
+$('settings').addEventListener('input', e => {
+  const p = e.target.dataset.path; if (!p) return;
+  const v = parseFloat(e.target.value); if (!isFinite(v)) return;
+  setPath(S, p, v);
+  $('saveMsg').textContent = saveS() ? 'Uložené v tomto prehliadači.' : 'Zmena platí len do zatvorenia stránky.';
+  render();
+});
+$('resetSettings').addEventListener('click', () => {
+  S = clone(DEFAULTS); saveS(); renderSettings(); fillCats(); render();
+  $('saveMsg').textContent = 'Obnovený predvolený cenník.';
+});
+$('copyQuote').addEventListener('click', async () => {
+  const txt = $('quote').textContent;
+  try { await navigator.clipboard.writeText(txt); $('copyMsg').textContent = ' Skopírované.'; }
+  catch (e) {
+    const r = document.createRange(); r.selectNodeContents($('quote'));
+    const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+    $('copyMsg').textContent = ' Text je označený, skopírujte ho (Ctrl+C).';
+  }
+});
+
+fillCats();
+renderSettings();
+render();
+try { if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js'); } catch (e) {}
+</script>
+</body>
+</html>
