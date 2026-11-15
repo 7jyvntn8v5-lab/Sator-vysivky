@@ -103,6 +103,9 @@ pre.quote{white-space:pre-wrap;font:13px/1.55 var(--mono);background:var(--bg);b
 .two{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
 .sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
 .hidden{display:none !important}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.chip{font:600 14px var(--body);border:1px solid var(--line);background:var(--soft);color:var(--ink);border-radius:99px;padding:8px 14px;min-height:40px;cursor:pointer}
+.chip.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .sr{position:absolute;opacity:0;width:1px;height:1px;overflow:hidden}
 label.btn{display:inline-flex;align-items:center;margin:0;color:var(--ink);font-size:14px}
 label.btn.primary{color:var(--accent-ink)}
@@ -150,41 +153,21 @@ input[type=range]{width:100%;accent-color:var(--accent);min-height:32px}
     <div class="grid">
       <div>
         <div class="card">
-          <h2>1 · Čo sa vyšíva</h2>
+          <h2>Zadanie</h2>
           <div class="f">
             <div class="full">
               <label for="cat">Materiál / typ výrobku</label>
               <select id="cat"></select>
               <div class="hint" id="catHint"></div>
             </div>
-            <div>
+            <div class="full">
               <label for="qty">Počet kusov</label>
               <input type="number" id="qty" min="1" step="1" value="25" inputmode="numeric">
+              <div class="chips" id="qtyChips"></div>
             </div>
-            <div>
-              <label for="prog">Program (Wilcom)</label>
-              <select id="prog">
-                <option value="new">Nový</option>
-                <option value="resize">Zmena veľkosti</option>
-                <option value="exist">Opakovaná</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <h2>2 · Veľkosť výšivky</h2>
-          <div class="f">
             <div class="full">
-              <label for="mode">Počítať podľa</label>
-              <select id="mode">
-                <option value="stitches">Počtu stehov (z Wilcomu)</option>
-                <option value="size">Rozmeru výšivky (odhad stehov)</option>
-              </select>
-            </div>
-            <div id="stWrap">
-              <label for="stitches">Počet stehov</label>
-              <input type="number" id="stitches" min="0" step="100" value="8000" inputmode="numeric">
+              <label>Umiestnenie (nastaví rozmer)</label>
+              <div class="chips" id="presetChips"></div>
             </div>
             <div>
               <label for="w">Šírka výšivky, mm</label>
@@ -194,37 +177,30 @@ input[type=range]{width:100%;accent-color:var(--accent);min-height:32px}
               <label for="h">Výška výšivky, mm</label>
               <input type="number" id="h" min="0" step="1" value="50" inputmode="numeric">
             </div>
-            <div id="typeWrap" class="hidden">
-              <label for="stype">Prevládajúci steh</label>
-              <select id="stype">
-                <option value="tatami">Tatami (výplň)</option>
-                <option value="satin">Satén</option>
-                <option value="mix" selected>Zmiešaný</option>
+            <div class="full">
+              <div class="row" style="margin-top:0">
+                <label class="btn primary" for="img">Nahrať obrázok motívu</label>
+                <input class="sr" type="file" id="img" accept="image/*">
+                <button class="btn hidden" type="button" id="clearImg">Odstrániť obrázok</button>
+              </div>
+              <div class="hint">Z obrázka sa dopočíta výška, krytie plochy a podiel saténu a tatami. Spracúva sa iba v zariadení, nikam sa neodosiela.</div>
+            </div>
+            <div class="full">
+              <label for="mode">Počítať podľa</label>
+              <select id="mode">
+                <option value="size" selected>Rozmeru výšivky (odhad stehov)</option>
+                <option value="stitches">Počtu stehov z Wilcomu</option>
               </select>
             </div>
-            <div id="shareWrap" class="hidden">
-              <label for="share">Podiel saténu, %</label>
-              <input type="number" id="share" min="0" max="100" step="5" value="40" inputmode="numeric">
-            </div>
-            <div id="coverWrap" class="hidden">
-              <label for="cover">Krytie obdĺžnika, %</label>
-              <input type="number" id="cover" min="5" max="100" step="5" value="60" inputmode="numeric">
-              <div class="hint">Koľko plochy v rozmere reálne pokryje niť. Text a obrys okolo 35 %, logo 50 až 70 %, plná výplň 90 až 100 %.</div>
+            <div id="stWrap" class="full hidden">
+              <label for="stitches">Počet stehov</label>
+              <input type="number" id="stitches" min="0" step="100" value="8000" inputmode="numeric">
             </div>
             <div id="estOut" class="full flag info hidden"></div>
           </div>
-        </div>
 
-        <div class="card">
-          <h2>Vizuál výšivky (nepovinné)</h2>
-          <div class="row" style="margin-top:0">
-            <label class="btn primary" for="img">Nahrať obrázok</label>
-            <input class="sr" type="file" id="img" accept="image/*">
-            <button class="btn hidden" type="button" id="clearImg">Odstrániť obrázok</button>
-          </div>
-          <div class="hint">Z obrázka sa zistí krytie plochy a podiel saténu a tatami pre odhad stehov. Spracúva sa iba v zariadení, nikam sa neodosiela.</div>
           <div id="imgTools" class="hidden">
-            <div class="f" style="margin-top:12px">
+            <div class="f" style="margin-top:14px">
               <div class="full"><label class="chk"><input type="checkbox" id="rmBg" checked> Odstrániť pozadie</label></div>
               <div class="full">
                 <label for="rmMode">Spôsob odstránenia</label>
@@ -240,54 +216,70 @@ input[type=range]{width:100%;accent-color:var(--accent);min-height:32px}
               <div class="full"><label class="chk"><input type="checkbox" id="ovl"> Zafarbiť satén (oranžová) a tatami (modrá)</label></div>
             </div>
             <canvas id="prev" width="10" height="10"></canvas>
-            <div class="hint">Pozadie uzavreté vo vnútri motívu zostane. Klepnutím naň ho odstránite, alebo zvoľte Všetka farba.</div>
+            <div class="hint">Pozadie uzavreté vo vnútri motívu zostane. Klepnutím naň ho odstránite, alebo zvoľte Všetka farba. Výška sa pri obrázku dopočíta zo šírky.</div>
             <div id="imgRes" class="flag info" style="margin-top:8px"></div>
-            <div class="row">
-              <button class="btn" type="button" id="ratioBtn">Výška podľa pomeru strán</button>
-              <button class="btn" type="button" id="resetColors">Zrušiť vybrané farby</button>
-            </div>
+            <div class="row"><button class="btn" type="button" id="resetColors">Zrušiť vybrané farby</button></div>
           </div>
-        </div>
 
-        <div class="card">
-          <h2>Údaje z Wilcomu pre čas na stroji</h2>
-          <div class="f">
-            <div>
-              <label for="cc">Zmeny farieb</label>
-              <input type="number" id="cc" min="0" step="1" value="4" inputmode="numeric">
+          <details>
+            <summary>Viac možností</summary>
+            <div class="f">
+              <div>
+                <label for="prog">Program (Wilcom)</label>
+                <select id="prog">
+                  <option value="new">Nový</option>
+                  <option value="resize">Zmena veľkosti</option>
+                  <option value="exist">Opakovaná</option>
+                </select>
+              </div>
+              <div>
+                <label for="garment">Výrobok</label>
+                <select id="garment">
+                  <option value="cust">Dodá zákazník</option>
+                  <option value="own">Dodáme my</option>
+                </select>
+              </div>
+              <div id="gcWrap" class="hidden">
+                <label for="gcost">Nákupná cena kusu, €</label>
+                <input type="number" id="gcost" min="0" step="0.05" value="4.50" inputmode="decimal">
+              </div>
+              <div class="full"><label class="chk"><input type="checkbox" id="express"> Expres (do 48 hodín)</label></div>
+              <div class="full"><label class="chk"><input type="checkbox" id="hard"> Ťažko dostupné miesto (rukáv, vrecko, hotový výrobok)</label></div>
+              <div class="full"><label class="chk"><input type="checkbox" id="textOnly"> Len text jedným písmom (lacnejšia digitalizácia)</label></div>
+              <div id="typeWrap" class="hidden">
+                <label for="stype">Prevládajúci steh</label>
+                <select id="stype">
+                  <option value="tatami">Tatami (výplň)</option>
+                  <option value="satin">Satén</option>
+                  <option value="mix" selected>Zmiešaný</option>
+                </select>
+              </div>
+              <div id="shareWrap" class="hidden">
+                <label for="share">Podiel saténu, %</label>
+                <input type="number" id="share" min="0" max="100" step="5" value="40" inputmode="numeric">
+              </div>
+              <div id="coverWrap" class="full hidden">
+                <label for="cover">Krytie obdĺžnika, %</label>
+                <input type="number" id="cover" min="5" max="100" step="5" value="60" inputmode="numeric">
+                <div class="hint">Koľko plochy v rozmere reálne pokryje niť. Text a obrys okolo 35 %, logo 50 až 70 %, plná výplň 90 až 100 %. Pri nahratom obrázku sa vyplní samo.</div>
+              </div>
             </div>
-            <div>
-              <label for="trims">Strihy nite (trims)</label>
-              <input type="number" id="trims" min="0" step="1" value="12" inputmode="numeric">
+            <h3>Čas na stroji (len interná marža)</h3>
+            <div class="f">
+              <div>
+                <label for="cc">Zmeny farieb</label>
+                <input type="number" id="cc" min="0" step="1" value="4" inputmode="numeric">
+              </div>
+              <div>
+                <label for="trims">Strihy nite (trims)</label>
+                <input type="number" id="trims" min="0" step="1" value="12" inputmode="numeric">
+              </div>
+              <div class="full">
+                <label for="wmin">Čas z Wilcomu, min / kus</label>
+                <input type="number" id="wmin" min="0" step="0.1" placeholder="nepovinné" inputmode="decimal">
+              </div>
             </div>
-            <div>
-              <label for="wmin">Čas z Wilcomu, min / kus</label>
-              <input type="number" id="wmin" min="0" step="0.1" placeholder="nepovinné" inputmode="decimal">
-            </div>
-            <div class="full">
-              <label class="chk"><input type="checkbox" id="textOnly"> Len text jedným písmom (lacnejšia digitalizácia)</label>
-            </div>
-          </div>
-          <div class="hint">Nemá vplyv na cenu pre zákazníka, len na internú maržu.</div>
-        </div>
-
-        <div class="card">
-          <h2>3 · Príplatky a textil</h2>
-          <div class="f">
-            <div class="full"><label class="chk"><input type="checkbox" id="express"> Expres (do 48 hodín)</label></div>
-            <div class="full"><label class="chk"><input type="checkbox" id="hard"> Ťažko dostupné miesto (rukáv, vrecko, hotový výrobok so zošitou podšívkou)</label></div>
-            <div>
-              <label for="garment">Výrobok</label>
-              <select id="garment">
-                <option value="cust">Dodá zákazník</option>
-                <option value="own">Dodáme my</option>
-              </select>
-            </div>
-            <div id="gcWrap" class="hidden">
-              <label for="gcost">Nákupná cena kusu, €</label>
-              <input type="number" id="gcost" min="0" step="0.05" value="4.50" inputmode="decimal">
-            </div>
-          </div>
+          </details>
         </div>
       </div>
 
@@ -422,6 +414,13 @@ const DEFAULTS = {
   garmentMarkup: 35,
   small: { use: 0, b1: 4.5, b2: 8, b3: 12, over: 0.6 },
   dens: { tatami: 100, satin: 140, satinMaxMm: 7 },
+  presets: [
+    { n: 'Ľavá hruď', w: 90, h: 50 },
+    { n: 'Chrbát', w: 250, h: 200 },
+    { n: 'Čelo šiltovky', w: 120, h: 50, cat: 'cap' },
+    { n: 'Rukáv', w: 80, h: 40 },
+    { n: 'Vrecko', w: 60, h: 30 }
+  ],
   tiers: [
     { from: 6,   rate: 0.80 },
     { from: 20,  rate: 0.80 },
@@ -609,6 +608,7 @@ function render(){
   const r = calc(i, S);
   const cat = S.cats[i.cat];
   $('catHint').textContent = cat.hint;
+  markChips();
   $('gcWrap').classList.toggle('hidden', i.garment !== 'own');
   const sz = i.mode === 'size';
   $('stWrap').classList.toggle('hidden', sz);
@@ -725,7 +725,8 @@ function render(){
 const SETTINGS_SPEC = [
   { title: 'Všeobecné', fields: [
     ['vat', 'DPH, %'], ['minOrder', 'Minimum zákazky na výšivku, €'], ['express', 'Expres príplatok, %'], ['hard', 'Ťažké miesto, príplatok %'], ['garmentMarkup', 'Prirážka na výrobok, %'] ] },
-  { title: 'Odhad stehov z rozmeru (st/cm² krytej plochy)', fields: [ ['dens.tatami', 'tatami'], ['dens.satin', 'satén'], ['dens.satinMaxMm', 'max. šírka saténu z obrázka, mm'] ] },
+  { title: 'Predvolené umiestnenia, rozmer v mm', fields: [ ['presets.0.w', 'Ľavá hruď: šírka'], ['presets.0.h', 'Ľavá hruď: výška'], ['presets.1.w', 'Chrbát: šírka'], ['presets.1.h', 'Chrbát: výška'], ['presets.2.w', 'Čelo šiltovky: šírka'], ['presets.2.h', 'Čelo šiltovky: výška'], ['presets.3.w', 'Rukáv: šírka'], ['presets.3.h', 'Rukáv: výška'], ['presets.4.w', 'Vrecko: šírka'], ['presets.4.h', 'Vrecko: výška'] ] },
+  { title: 'Odhad stehov (st/cm² krytej plochy)', fields: [ ['dens.tatami', 'tatami'], ['dens.satin', 'satén'], ['dens.satinMaxMm', 'max. šírka saténu z obrázka, mm'] ] },
   { title: '1 až 5 kusov (voliteľná cena podľa pásma stehov)', fields: [
     ['small.use', 'použiť pásma (1 = áno, 0 = nie)'], ['small.b1', 'do 5000 st., €/ks'], ['small.b2', 'do 10 000 st., €/ks'], ['small.b3', 'do 20 000 st., €/ks'], ['small.over', 'nad 20 000: € za 1000 st.'] ] },
   { title: 'Sadzba € za 1000 stehov podľa množstva (základ 0,80 €)', fields: [
@@ -772,6 +773,7 @@ $('settings').addEventListener('input', e => {
   const p = e.target.dataset.path; if (!p) return;
   const v = parseFloat(e.target.value); if (!isFinite(v)) return;
   setPath(S, p, v);
+  buildChips();
   $('saveMsg').textContent = saveS() ? 'Uložené v tomto prehliadači.' : 'Zmena platí len do zatvorenia stránky.';
   render();
 });
@@ -836,7 +838,7 @@ function loadImageFile(file){
     const w = Math.max(1, Math.round(im.naturalWidth * sc)), h = Math.max(1, Math.round(im.naturalHeight * sc));
     const c = document.createElement('canvas'); c.width = w; c.height = h;
     const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(im, 0, 0, w, h);
-    IMG.data = x.getImageData(0, 0, w, h); IMG.w = w; IMG.h = h; IMG.extra = [];
+    IMG.data = x.getImageData(0, 0, w, h); IMG.w = w; IMG.h = h; IMG.extra = []; IMG.fresh = true;
     URL.revokeObjectURL(url);
     $('imgTools').classList.remove('hidden'); $('clearImg').classList.remove('hidden');
     analyzeImage();
@@ -892,6 +894,7 @@ function analyzeImage(){
   const cw = maxx - minx + 1, ch = maxy - miny + 1;
   const cov = cnt / (cw * ch);
   IMG.crop = { minx, miny, cw, ch }; IMG.ratio = ch / cw;
+  if (IMG.fresh){ IMG.fresh = false; const wv0 = parseFloat($('w').value) || 0; if (wv0 > 0) $('h').value = Math.round(wv0 * IMG.ratio); }
 
   // rozdelenie satén / tatami podľa šírky ťahu
   const wmm = parseFloat($('w').value) || 0;
@@ -944,7 +947,8 @@ function analyzeImage(){
 
 $('img').addEventListener('change', e => { const f = e.target.files && e.target.files[0]; if (f) loadImageFile(f); e.target.value = ''; });
 ['rmBg', 'rmMode', 'tol', 'ovl'].forEach(id => { $(id).addEventListener('input', analyzeImage); $(id).addEventListener('change', analyzeImage); });
-['w', 'h'].forEach(id => $(id).addEventListener('input', () => { if (IMG.data) analyzeImage(); }));
+$('w').addEventListener('input', () => { if (IMG.data){ const wv = parseFloat($('w').value) || 0; if (wv > 0 && IMG.crop) $('h').value = Math.round(wv * IMG.ratio); analyzeImage(); } });
+$('h').addEventListener('input', () => { if (IMG.data) analyzeImage(); });
 $('prev').addEventListener('click', e => {
   if (!IMG.data || !IMG.crop) return;
   const r = $('prev').getBoundingClientRect(), c = IMG.crop;
@@ -955,17 +959,41 @@ $('prev').addEventListener('click', e => {
   analyzeImage();
 });
 $('resetColors').addEventListener('click', () => { IMG.extra = []; analyzeImage(); });
-$('ratioBtn').addEventListener('click', () => {
-  const wv = parseFloat($('w').value) || 0; if (!wv || !IMG.crop) return;
-  $('h').value = Math.round(wv * IMG.ratio); analyzeImage();
-});
 $('clearImg').addEventListener('click', () => {
   IMG.data = null; IMG.crop = null; IMG.extra = [];
   $('imgTools').classList.add('hidden'); $('clearImg').classList.add('hidden'); render();
 });
 
+/* ===== Rýchle voľby: množstvo a umiestnenie ===== */
+function buildChips(){
+  $('qtyChips').innerHTML = [1, 10, 25, 50, 100].map(q => `<button type="button" class="chip" data-q="${q}">${q}</button>`).join('');
+  $('presetChips').innerHTML = S.presets.map((p, k) => `<button type="button" class="chip" data-p="${k}">${p.n}</button>`).join('');
+  markChips();
+}
+function markChips(){
+  const q = parseFloat($('qty').value) || 0, w = parseFloat($('w').value) || 0, h = parseFloat($('h').value) || 0;
+  document.querySelectorAll('#qtyChips .chip').forEach(b => b.classList.toggle('on', +b.dataset.q === q));
+  document.querySelectorAll('#presetChips .chip').forEach(b => { const p = S.presets[+b.dataset.p]; b.classList.toggle('on', p.w === w && p.h === h); });
+}
+$('qtyChips').addEventListener('click', e => { const b = e.target.closest('.chip'); if (!b) return; $('qty').value = b.dataset.q; render(); });
+$('presetChips').addEventListener('click', e => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  const p = S.presets[+b.dataset.p];
+  const isCap = $('cat').value === 'cap' || $('cat').value === 'cap3d';
+  if (p.cat && !isCap) $('cat').value = p.cat;
+  if (!p.cat && isCap) $('cat').value = 'flat';
+  let w = p.w, h = p.h;
+  if (IMG.data && IMG.crop){
+    const r = IMG.ratio;
+    if (p.w * r <= p.h){ w = p.w; h = Math.round(p.w * r); } else { h = p.h; w = Math.round(p.h / r); }
+  }
+  $('w').value = w; $('h').value = h;
+  if (IMG.data) analyzeImage(); else render();
+});
+
 fillCats();
 renderSettings();
+buildChips();
 render();
 try { if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js'); } catch (e) {}
 </script>
