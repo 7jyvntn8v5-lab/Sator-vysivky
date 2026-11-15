@@ -103,6 +103,12 @@ pre.quote{white-space:pre-wrap;font:13px/1.55 var(--mono);background:var(--bg);b
 .two{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
 .sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
 .hidden{display:none !important}
+.sr{position:absolute;opacity:0;width:1px;height:1px;overflow:hidden}
+label.btn{display:inline-flex;align-items:center;margin:0;color:var(--ink);font-size:14px}
+label.btn.primary{color:var(--accent-ink)}
+#prev{display:block;width:100%;max-width:420px;border:1px solid var(--line);border-radius:8px;margin:10px 0;cursor:crosshair;touch-action:manipulation}
+input[type=range]{width:100%;accent-color:var(--accent);min-height:32px}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
 @media (max-width:700px){
   .tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;margin:0;background:var(--panel);border-top:1px solid var(--line);border-bottom:0;padding:0 8px env(safe-area-inset-bottom);justify-content:space-around;gap:0}
   .tabs button{flex:1;padding:12px 6px;border-bottom:0;border-top:3px solid transparent;font-size:13px}
@@ -206,6 +212,40 @@ pre.quote{white-space:pre-wrap;font:13px/1.55 var(--mono);background:var(--bg);b
               <div class="hint">Koľko plochy v rozmere reálne pokryje niť. Text a obrys okolo 35 %, logo 50 až 70 %, plná výplň 90 až 100 %.</div>
             </div>
             <div id="estOut" class="full flag info hidden"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Vizuál výšivky (nepovinné)</h2>
+          <div class="row" style="margin-top:0">
+            <label class="btn primary" for="img">Nahrať obrázok</label>
+            <input class="sr" type="file" id="img" accept="image/*">
+            <button class="btn hidden" type="button" id="clearImg">Odstrániť obrázok</button>
+          </div>
+          <div class="hint">Z obrázka sa zistí krytie plochy a podiel saténu a tatami pre odhad stehov. Spracúva sa iba v zariadení, nikam sa neodosiela.</div>
+          <div id="imgTools" class="hidden">
+            <div class="f" style="margin-top:12px">
+              <div class="full"><label class="chk"><input type="checkbox" id="rmBg" checked> Odstrániť pozadie</label></div>
+              <div class="full">
+                <label for="rmMode">Spôsob odstránenia</label>
+                <select id="rmMode">
+                  <option value="edge">Od okrajov (zachová vnútro)</option>
+                  <option value="all">Všetka farba (aj vnútri)</option>
+                </select>
+              </div>
+              <div class="full">
+                <label for="tol">Citlivosť odstránenia: <span id="tolV">25</span></label>
+                <input type="range" id="tol" min="2" max="80" step="1" value="25">
+              </div>
+              <div class="full"><label class="chk"><input type="checkbox" id="ovl"> Zafarbiť satén (oranžová) a tatami (modrá)</label></div>
+            </div>
+            <canvas id="prev" width="10" height="10"></canvas>
+            <div class="hint">Pozadie uzavreté vo vnútri motívu zostane. Klepnutím naň ho odstránite, alebo zvoľte Všetka farba.</div>
+            <div id="imgRes" class="flag info" style="margin-top:8px"></div>
+            <div class="row">
+              <button class="btn" type="button" id="ratioBtn">Výška podľa pomeru strán</button>
+              <button class="btn" type="button" id="resetColors">Zrušiť vybrané farby</button>
+            </div>
           </div>
         </div>
 
@@ -381,7 +421,7 @@ const DEFAULTS = {
   hard: 15,
   garmentMarkup: 35,
   small: { use: 0, b1: 4.5, b2: 8, b3: 12, over: 0.6 },
-  dens: { tatami: 100, satin: 140 },
+  dens: { tatami: 100, satin: 140, satinMaxMm: 7 },
   tiers: [
     { from: 6,   rate: 0.80 },
     { from: 20,  rate: 0.80 },
@@ -685,7 +725,7 @@ function render(){
 const SETTINGS_SPEC = [
   { title: 'Všeobecné', fields: [
     ['vat', 'DPH, %'], ['minOrder', 'Minimum zákazky na výšivku, €'], ['express', 'Expres príplatok, %'], ['hard', 'Ťažké miesto, príplatok %'], ['garmentMarkup', 'Prirážka na výrobok, %'] ] },
-  { title: 'Odhad stehov z rozmeru (st/cm² krytej plochy)', fields: [ ['dens.tatami', 'tatami'], ['dens.satin', 'satén'] ] },
+  { title: 'Odhad stehov z rozmeru (st/cm² krytej plochy)', fields: [ ['dens.tatami', 'tatami'], ['dens.satin', 'satén'], ['dens.satinMaxMm', 'max. šírka saténu z obrázka, mm'] ] },
   { title: '1 až 5 kusov (voliteľná cena podľa pásma stehov)', fields: [
     ['small.use', 'použiť pásma (1 = áno, 0 = nie)'], ['small.b1', 'do 5000 st., €/ks'], ['small.b2', 'do 10 000 st., €/ks'], ['small.b3', 'do 20 000 st., €/ks'], ['small.over', 'nad 20 000: € za 1000 st.'] ] },
   { title: 'Sadzba € za 1000 stehov podľa množstva (základ 0,80 €)', fields: [
@@ -747,6 +787,181 @@ $('copyQuote').addEventListener('click', async () => {
     const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
     $('copyMsg').textContent = ' Text je označený, skopírujte ho (Ctrl+C).';
   }
+});
+
+
+/* ===== Vizuál výšivky: odstránenie pozadia, krytie, satén/tatami ===== */
+const IMG = { data: null, w: 0, h: 0, extra: [], crop: null, ratio: 1 };
+
+function colDist(d, i, c){ const a = d[i] - c[0], b = d[i + 1] - c[1], e = d[i + 2] - c[2]; return Math.sqrt(a * a + b * b + e * e); }
+
+function estimateBg(d, w, h){
+  const bk = new Map();
+  const add = (x, y) => {
+    const i = (y * w + x) * 4; if (d[i + 3] < 128) return;
+    const k = (d[i] >> 4) * 256 + (d[i + 1] >> 4) * 16 + (d[i + 2] >> 4);
+    const b = bk.get(k) || { n: 0, r: 0, g: 0, b: 0 };
+    b.n++; b.r += d[i]; b.g += d[i + 1]; b.b += d[i + 2]; bk.set(k, b);
+  };
+  for (let x = 0; x < w; x++){ add(x, 0); add(x, h - 1); }
+  for (let y = 0; y < h; y++){ add(0, y); add(w - 1, y); }
+  let best = null; bk.forEach(b => { if (!best || b.n > best.n) best = b; });
+  return best ? [best.r / best.n, best.g / best.n, best.b / best.n] : [255, 255, 255];
+}
+
+// vzdialenosť (×3) od najbližšieho pixelu, kde src = 1 (chamfer 3-4)
+function chamfer(src, w, h){
+  const INF = 1e9, d = new Float32Array(w * h);
+  for (let i = 0; i < d.length; i++) d[i] = src[i] ? 0 : INF;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++){
+    const i = y * w + x; let v = d[i];
+    if (x > 0) v = Math.min(v, d[i - 1] + 3);
+    if (y > 0){ v = Math.min(v, d[i - w] + 3); if (x > 0) v = Math.min(v, d[i - w - 1] + 4); if (x < w - 1) v = Math.min(v, d[i - w + 1] + 4); }
+    d[i] = v;
+  }
+  for (let y = h - 1; y >= 0; y--) for (let x = w - 1; x >= 0; x--){
+    const i = y * w + x; let v = d[i];
+    if (x < w - 1) v = Math.min(v, d[i + 1] + 3);
+    if (y < h - 1){ v = Math.min(v, d[i + w] + 3); if (x < w - 1) v = Math.min(v, d[i + w + 1] + 4); if (x > 0) v = Math.min(v, d[i + w - 1] + 4); }
+    d[i] = v;
+  }
+  return d;
+}
+
+function loadImageFile(file){
+  const url = URL.createObjectURL(file);
+  const im = new Image();
+  im.onload = () => {
+    const max = 480, sc = Math.min(1, max / Math.max(im.naturalWidth, im.naturalHeight));
+    const w = Math.max(1, Math.round(im.naturalWidth * sc)), h = Math.max(1, Math.round(im.naturalHeight * sc));
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(im, 0, 0, w, h);
+    IMG.data = x.getImageData(0, 0, w, h); IMG.w = w; IMG.h = h; IMG.extra = [];
+    URL.revokeObjectURL(url);
+    $('imgTools').classList.remove('hidden'); $('clearImg').classList.remove('hidden');
+    analyzeImage();
+  };
+  im.onerror = () => {
+    URL.revokeObjectURL(url);
+    $('imgTools').classList.remove('hidden');
+    $('imgRes').textContent = 'Obrázok sa nepodarilo otvoriť. Skúste PNG alebo JPG.';
+  };
+  im.src = url;
+}
+
+function analyzeImage(){
+  if (!IMG.data) return;
+  const w = IMG.w, h = IMG.h, n = w * h, d = IMG.data.data;
+  const rm = $('rmBg').checked, mode = $('rmMode').value;
+  const tolRaw = parseFloat($('tol').value) || 25, tol = tolRaw / 100 * 220;
+  $('tolV').textContent = String(tolRaw);
+
+  let alphaN = 0; for (let i = 3; i < d.length; i += 4) if (d[i] < 200) alphaN++;
+  const hasAlpha = alphaN > n * 0.002;
+
+  const bg = new Uint8Array(n);
+  if (rm){
+    const bgc = estimateBg(d, w, h);
+    const auto = new Uint8Array(n), extra = new Uint8Array(n);
+    for (let p = 0; p < n; p++){
+      const i = p * 4;
+      auto[p] = hasAlpha ? (d[i + 3] < 128 ? 1 : 0) : (colDist(d, i, bgc) <= tol ? 1 : 0);
+      for (const c of IMG.extra){ if (colDist(d, i, c) <= tol){ extra[p] = 1; break; } }
+    }
+    if (hasAlpha || mode === 'all'){
+      for (let p = 0; p < n; p++) bg[p] = (auto[p] || extra[p]) ? 1 : 0;
+    } else {
+      const stack = new Int32Array(n); let sp = 0;
+      const push = p => { if (!bg[p] && (auto[p] || extra[p])){ bg[p] = 1; stack[sp++] = p; } };
+      for (let x = 0; x < w; x++){ push(x); push((h - 1) * w + x); }
+      for (let y = 0; y < h; y++){ push(y * w); push(y * w + w - 1); }
+      while (sp > 0){
+        const p = stack[--sp], x = p % w, y = (p - x) / w;
+        if (x > 0) push(p - 1); if (x < w - 1) push(p + 1); if (y > 0) push(p - w); if (y < h - 1) push(p + w);
+      }
+      for (let p = 0; p < n; p++) if (extra[p]) bg[p] = 1;
+    }
+  }
+
+  let minx = w, miny = h, maxx = -1, maxy = -1, cnt = 0;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++){
+    if (!bg[y * w + x]){ cnt++; if (x < minx) minx = x; if (x > maxx) maxx = x; if (y < miny) miny = y; if (y > maxy) maxy = y; }
+  }
+  if (cnt === 0){ $('imgRes').textContent = 'Po odstránení pozadia nezostal žiadny motív. Znížte citlivosť alebo zrušte vybrané farby.'; return; }
+
+  const cw = maxx - minx + 1, ch = maxy - miny + 1;
+  const cov = cnt / (cw * ch);
+  IMG.crop = { minx, miny, cw, ch }; IMG.ratio = ch / cw;
+
+  // rozdelenie satén / tatami podľa šírky ťahu
+  const wmm = parseFloat($('w').value) || 0;
+  const satinMax = S.dens.satinMaxMm || 7;
+  const pw = cw + 2, ph = ch + 2;
+  const fgp = new Uint8Array(pw * ph);
+  for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) fgp[(y + 1) * pw + x + 1] = bg[(y + miny) * w + x + minx] ? 0 : 1;
+  let opened = null, share = null;
+  if (wmm > 0){
+    const r = Math.max(1, satinMax / 2 * (cw / wmm));
+    const src = new Uint8Array(pw * ph); for (let i = 0; i < src.length; i++) src[i] = fgp[i] ? 0 : 1;
+    const D = chamfer(src, pw, ph);
+    const seeds = new Uint8Array(pw * ph); for (let i = 0; i < seeds.length; i++) seeds[i] = (fgp[i] && D[i] >= r * 3) ? 1 : 0;
+    const E = chamfer(seeds, pw, ph);
+    opened = new Uint8Array(pw * ph); let tat = 0;
+    for (let i = 0; i < opened.length; i++){ if (fgp[i] && E[i] <= r * 3){ opened[i] = 1; tat++; } }
+    share = 1 - tat / cnt;
+  }
+
+  // náhľad
+  const cv = $('prev'); cv.width = cw; cv.height = ch;
+  const ctx = cv.getContext('2d'); const out = ctx.createImageData(cw, ch); const o = out.data;
+  const ovl = $('ovl').checked && opened;
+  for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++){
+    const j = (y * cw + x) * 4, p = (y + miny) * w + x + minx, i = p * 4;
+    if (bg[p]){
+      const g = (((x >> 3) + (y >> 3)) & 1) ? 205 : 235; o[j] = o[j + 1] = o[j + 2] = g; o[j + 3] = 255;
+    } else if (ovl){
+      const t = opened[(y + 1) * pw + x + 1];
+      const c = t ? [93, 180, 242] : [245, 154, 43];
+      o[j] = (d[i] + c[0]) >> 1; o[j + 1] = (d[i + 1] + c[1]) >> 1; o[j + 2] = (d[i + 2] + c[2]) >> 1; o[j + 3] = 255;
+    } else { o[j] = d[i]; o[j + 1] = d[i + 1]; o[j + 2] = d[i + 2]; o[j + 3] = 255; }
+  }
+  ctx.putImageData(out, 0, 0);
+
+  // výsledok a prenos do kalkulačky
+  const pct = v => Math.round(v * 100);
+  let txt = `Krytie obdĺžnika ${pct(cov)} %. Pomer strán ${(cw / ch).toFixed(2).replace('.', ',')} : 1.`;
+  if (share != null) txt += ` Satén ${pct(share)} %, tatami ${100 - pct(share)} % (ťah do ${satinMax} mm je satén).`;
+  else txt += ' Zadajte šírku výšivky v mm, spočíta sa aj podiel saténu a tatami.';
+  if (hasAlpha && rm) txt += ' Použité priehľadné pozadie z PNG.';
+  if (!rm) txt += ' Pozadie sa neodstraňuje, celý obrázok sa berie ako motív.';
+  $('imgRes').textContent = txt;
+
+  $('mode').value = 'size';
+  $('cover').value = Math.max(5, pct(cov));
+  if (share != null){ $('stype').value = 'mix'; $('share').value = pct(share); }
+  render();
+}
+
+$('img').addEventListener('change', e => { const f = e.target.files && e.target.files[0]; if (f) loadImageFile(f); e.target.value = ''; });
+['rmBg', 'rmMode', 'tol', 'ovl'].forEach(id => { $(id).addEventListener('input', analyzeImage); $(id).addEventListener('change', analyzeImage); });
+['w', 'h'].forEach(id => $(id).addEventListener('input', () => { if (IMG.data) analyzeImage(); }));
+$('prev').addEventListener('click', e => {
+  if (!IMG.data || !IMG.crop) return;
+  const r = $('prev').getBoundingClientRect(), c = IMG.crop;
+  const x = Math.min(c.cw - 1, Math.max(0, Math.floor((e.clientX - r.left) / r.width * c.cw))) + c.minx;
+  const y = Math.min(c.ch - 1, Math.max(0, Math.floor((e.clientY - r.top) / r.height * c.ch))) + c.miny;
+  const i = (y * IMG.w + x) * 4, d = IMG.data.data;
+  IMG.extra.push([d[i], d[i + 1], d[i + 2]]);
+  analyzeImage();
+});
+$('resetColors').addEventListener('click', () => { IMG.extra = []; analyzeImage(); });
+$('ratioBtn').addEventListener('click', () => {
+  const wv = parseFloat($('w').value) || 0; if (!wv || !IMG.crop) return;
+  $('h').value = Math.round(wv * IMG.ratio); analyzeImage();
+});
+$('clearImg').addEventListener('click', () => {
+  IMG.data = null; IMG.crop = null; IMG.extra = [];
+  $('imgTools').classList.add('hidden'); $('clearImg').classList.add('hidden'); render();
 });
 
 fillCats();
